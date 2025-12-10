@@ -1,4 +1,10 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page import="java.util.*, java.text.*" %>
+<%
+    // Expecting ProductListServlet to forward a List<Map<String,Object>> named "products"
+    List<Map<String,Object>> products = (List<Map<String,Object>>) request.getAttribute("products");
+    if (products == null) products = new ArrayList<>();
+%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,155 +16,84 @@
 
 <header>
     <div class="logo">EcoThrift</div>
-<nav>
-    <a href="index.jsp">Home</a>
-    <a href="products.jsp">Shop</a>
-    <a href="donate.jsp">Donate</a>
-    <a href="about.jsp">About</a>
-    <a href="cart.jsp">Cart</a>
+    <nav>
+  <a href="${pageContext.request.contextPath}/index.jsp">Home</a>
+  <a href="${pageContext.request.contextPath}/products">Shop</a>
+  <a href="${pageContext.request.contextPath}/donate.jsp">Donate</a>
+  <a href="${pageContext.request.contextPath}/about.jsp">About</a>
+  <a href="${pageContext.request.contextPath}/cart.jsp">Cart</a>
 
-    <% 
-        String user = (String) session.getAttribute("username"); 
-        if (user == null) { 
-    %>
-            <a href="login.jsp" class="btn">Login</a>
-            <a href="register.jsp" class="btn">Register</a>
-    <% 
-        } else { 
-    %>
-            <a href="orders.jsp" class="btn">My Orders</a>   <!-- ⭐ NEW LINK ADDED -->
-            <span style="margin-left:10px; font-weight:bold;">Hi, <%= user %></span>
-            <a href="LogoutServlet" class="btn">Logout</a>
-    <% 
-        } 
-    %>
+  <%
+    HttpSession __s = request.getSession(false);
+    String user = (__s == null) ? null : (String) __s.getAttribute("username");
+  %>
+
+  <% if (user == null) { %>
+      <a href="${pageContext.request.contextPath}/login.jsp" class="btn">Login</a>
+      <a href="${pageContext.request.contextPath}/register.jsp" class="btn">Register</a>
+  <% } else { %>
+      <a href="${pageContext.request.contextPath}/orders.jsp">My Orders</a>
+      <a href="${pageContext.request.contextPath}/DonationListServlet">My Donations</a>
+      <span style="margin-left:10px; font-weight:bold;">Hi, <%= user %></span>
+      <a href="${pageContext.request.contextPath}/LogoutServlet" class="btn">Logout</a>
+  <% } %>
 </nav>
-
-
 
 </header>
 
 <section class="products">
     <h2>Men's Collection</h2>
 
-    <!-- SHIRTS -->
-    <h3>Shirts</h3>
+    <!-- We will render products whose category == "men" -->
     <div class="grid">
+        <%
+            for (Map<String,Object> p : products) {
+                if (!"men".equalsIgnoreCase((String)p.get("category"))) continue;
+                int pid = (Integer) p.get("id");
+                String name = (String) p.get("name");
+                double price = (p.get("price") instanceof Double) ? (Double)p.get("price") : ((Number)p.get("price")).doubleValue();
+                String img = (String) p.get("image_url");
+                List<Map<String,Object>> sizes = (List<Map<String,Object>>) p.get("sizes");
+        %>
 
         <div class="product">
-            <img src="images/mens-shirt1.jpg" alt="Casual Checked Shirt">
-            <h4>Casual Checked Shirt</h4>
-            <p>350</p>
+            <img src="<%= (img != null ? img : "images/placeholder.png") %>" alt="<%=name%>">
+            <h4><%=name%></h4>
+            <p>₹<%= String.format("%.0f", price) %></p>
+
             <form action="AddToCartServlet" method="post">
-                <input type="hidden" name="productId" value="101">
-                <input type="hidden" name="name" value="Casual Checked Shirt">
-                <input type="hidden" name="price" value="350">
-                <input type="hidden" name="image" value="images/mens-shirt1.jpg">
+                <input type="hidden" name="productId" value="<%=pid%>">
                 <label>Size:</label>
-                <select name="size">
-                    <option>XS</option><option>S</option><option>M</option><option>L</option>
+                <select name="size" required>
+                    <%
+                        if (sizes != null && !sizes.isEmpty()) {
+                            for (Map<String,Object> s : sizes) {
+                                String sz = (String)s.get("size");
+                                int q = (Integer)s.get("quantity");
+                                if (q <= 0) {
+                    %>
+                                    <option value="<%=sz%>" disabled><%=sz%> (Out)</option>
+                    <%
+                                } else {
+                    %>
+                                    <option value="<%=sz%>"><%=sz%> (<%=q%>)</option>
+                    <%
+                                }
+                            }
+                        } else {
+                            // fallback to common sizes if DB sizes missing
+                    %>
+                            <option>XS</option><option>S</option><option>M</option><option>L</option>
+                    <%
+                        }
+                    %>
                 </select>
+
                 <button type="submit">Add to Cart</button>
             </form>
         </div>
 
-        <div class="product">
-            <img src="images/mens-shirt2.jpg" alt="Formal White Shirt">
-            <h4>Formal White Shirt</h4>
-            <p>300</p>
-            <form action="AddToCartServlet" method="post">
-                <input type="hidden" name="productId" value="102">
-                <input type="hidden" name="name" value="Formal White Shirt">
-                <input type="hidden" name="price" value="300">
-                <input type="hidden" name="image" value="images/mens-shirt2.jpg">
-                <label>Size:</label>
-                <select name="size">
-                    <option>XS</option><option>S</option><option>M</option><option>L</option>
-                </select>
-                <button type="submit">Add to Cart</button>
-            </form>
-        </div>
-
-    </div>
-
-    <!-- BOTTOMS -->
-    <h3>Bottoms</h3>
-    <div class="grid">
-
-        <div class="product">
-            <img src="images/mens-jeans.jpg" alt="Blue Denim Jeans">
-            <h4>Blue Denim Jeans</h4>
-            <p>400</p>
-            <form action="AddToCartServlet" method="post">
-                <input type="hidden" name="productId" value="103">
-                <input type="hidden" name="name" value="Blue Denim Jeans">
-                <input type="hidden" name="price" value="400">
-                <input type="hidden" name="image" value="images/mens-jeans.jpg">
-                <label>Waist:</label>
-                <select name="size">
-                    <option>28</option><option>30</option><option>32</option><option>34</option><option>36</option>
-                </select>
-                <button type="submit">Add to Cart</button>
-            </form>
-        </div>
-
-        <div class="product">
-            <img src="images/mens-trousers.jpg" alt="Khaki Cotton Trousers">
-            <h4>Khaki Cotton Trousers</h4>
-            <p>350</p>
-            <form action="AddToCartServlet" method="post">
-                <input type="hidden" name="productId" value="104">
-                <input type="hidden" name="name" value="Khaki Cotton Trousers">
-                <input type="hidden" name="price" value="350">
-                <input type="hidden" name="image" value="images/mens-trousers.jpg">
-                <label>Waist:</label>
-                <select name="size">
-                    <option>28</option><option>30</option><option>32</option><option>34</option><option>36</option>
-                </select>
-                <button type="submit">Add to Cart</button>
-            </form>
-        </div>
-
-    </div>
-
-    <!-- TSHIRTS -->
-    <h3>T-Shirts</h3>
-    <div class="grid">
-
-        <div class="product">
-            <img src="images/mens-tshirt1.jpg" alt="Graphic Tee">
-            <h4>Graphic Tee</h4>
-            <p>250</p>
-            <form action="AddToCartServlet" method="post">
-                <input type="hidden" name="productId" value="105">
-                <input type="hidden" name="name" value="Graphic Tee">
-                <input type="hidden" name="price" value="250">
-                <input type="hidden" name="image" value="images/mens-tshirt1.jpg">
-                <label>Size:</label>
-                <select name="size">
-                    <option>XS</option><option>S</option><option>M</option><option>L</option>
-                </select>
-                <button type="submit">Add to Cart</button>
-            </form>
-        </div>
-
-        <div class="product">
-            <img src="images/mens-tshirt2.jpg" alt="Plain Black T-Shirt">
-            <h4>Plain Black T-Shirt</h4>
-            <p>200</p>
-            <form action="AddToCartServlet" method="post">
-                <input type="hidden" name="productId" value="106">
-                <input type="hidden" name="name" value="Plain Black T-Shirt">
-                <input type="hidden" name="price" value="200">
-                <input type="hidden" name="image" value="images/mens-tshirt2.jpg">
-                <label>Size:</label>
-                <select name="size">
-                    <option>XS</option><option>S</option><option>M</option><option>L</option>
-                </select>
-                <button type="submit">Add to Cart</button>
-            </form>
-        </div>
-
+        <% } %>
     </div>
 
 </section>

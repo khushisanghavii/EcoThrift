@@ -1,4 +1,9 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page import="java.util.*" %>
+<%
+    List<Map<String,Object>> products = (List<Map<String,Object>>) request.getAttribute("products");
+    if (products == null) products = new ArrayList<>();
+%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,27 +15,26 @@
 <header>
     <div class="logo">EcoThrift</div>
 <nav>
-    <a href="index.jsp">Home</a>
-    <a href="products.jsp">Shop</a>
-    <a href="donate.jsp">Donate</a>
-    <a href="about.jsp">About</a>
-    <a href="cart.jsp">Cart</a>
+  <a href="${pageContext.request.contextPath}/index.jsp">Home</a>
+  <a href="${pageContext.request.contextPath}/products">Shop</a>
+  <a href="${pageContext.request.contextPath}/donate.jsp">Donate</a>
+  <a href="${pageContext.request.contextPath}/about.jsp">About</a>
+  <a href="${pageContext.request.contextPath}/cart.jsp">Cart</a>
 
-    <% 
-        String user = (String) session.getAttribute("username"); 
-        if (user == null) { 
-    %>
-            <a href="login.jsp" class="btn">Login</a>
-            <a href="register.jsp" class="btn">Register</a>
-    <% 
-        } else { 
-    %>
-            <a href="orders.jsp" class="btn">My Orders</a>   <!-- ⭐ NEW LINK ADDED -->
-            <span style="margin-left:10px; font-weight:bold;">Hi, <%= user %></span>
-            <a href="LogoutServlet" class="btn">Logout</a>
-    <% 
-        } 
-    %>
+  <%
+    HttpSession __s = request.getSession(false);
+    String user = (__s == null) ? null : (String) __s.getAttribute("username");
+  %>
+
+  <% if (user == null) { %>
+      <a href="${pageContext.request.contextPath}/login.jsp" class="btn">Login</a>
+      <a href="${pageContext.request.contextPath}/register.jsp" class="btn">Register</a>
+  <% } else { %>
+      <a href="${pageContext.request.contextPath}/orders.jsp">My Orders</a>
+      <a href="${pageContext.request.contextPath}/DonationListServlet">My Donations</a>
+      <span style="margin-left:10px; font-weight:bold;">Hi, <%= user %></span>
+      <a href="${pageContext.request.contextPath}/LogoutServlet" class="btn">Logout</a>
+  <% } %>
 </nav>
 
 </header>
@@ -38,81 +42,56 @@
 <section class="products">
     <h2>Kids' Collection</h2>
 
-    <!-- TOPS -->
-    <h3>Tops</h3>
     <div class="grid">
+        <%
+            for (Map<String,Object> p : products) {
+                if (!"kids".equalsIgnoreCase((String)p.get("category"))) continue;
+                int pid = (Integer) p.get("id");
+                String name = (String) p.get("name");
+                double price = (p.get("price") instanceof Double) ? (Double)p.get("price") : ((Number)p.get("price")).doubleValue();
+                String img = (String) p.get("image_url");
+                List<Map<String,Object>> sizes = (List<Map<String,Object>>) p.get("sizes");
+        %>
+
         <div class="product">
-            <img src="images/kids-top1.jpg" alt="Cartoon Print T-Shirt">
-            <h4>Cartoon Print T-Shirt</h4>
-            <p>180</p>
+            <img src="<%= (img != null ? img : "images/placeholder.png") %>" alt="<%=name%>">
+            <h4><%=name%></h4>
+            <p>₹<%= String.format("%.0f", price) %></p>
+
             <form action="AddToCartServlet" method="post">
-                <input type="hidden" name="productId" value="301">
-                <input type="hidden" name="name" value="Cartoon Print T-Shirt">
-                <input type="hidden" name="price" value="180">
-                <input type="hidden" name="image" value="images/kids-top1.jpg">
+                <input type="hidden" name="productId" value="<%=pid%>">
                 <label>Size:</label>
-                <select name="size">
-                    <option>XS</option><option>S</option><option>M</option>
+                <select name="size" required>
+                    <%
+                        if (sizes != null && !sizes.isEmpty()) {
+                            for (Map<String,Object> s : sizes) {
+                                String sz = (String)s.get("size");
+                                int q = (Integer)s.get("quantity");
+                                if (q <= 0) {
+                    %>
+                                    <option value="<%=sz%>" disabled><%=sz%> (Out)</option>
+                    <%
+                                } else {
+                    %>
+                                    <option value="<%=sz%>"><%=sz%> (<%=q%>)</option>
+                    <%
+                                }
+                            }
+                        } else {
+                    %>
+                            <option>XS</option><option>S</option><option>M</option>
+                    <%
+                        }
+                    %>
                 </select>
+
                 <button type="submit">Add to Cart</button>
             </form>
         </div>
 
-        <div class="product">
-            <img src="images/kids-top2.jpg" alt="Colorful Polo Shirt">
-            <h4>Colorful Polo Shirt</h4>
-            <p>200</p>
-            <form action="AddToCartServlet" method="post">
-                <input type="hidden" name="productId" value="302">
-                <input type="hidden" name="name" value="Colorful Polo Shirt">
-                <input type="hidden" name="price" value="200">
-                <input type="hidden" name="image" value="images/kids-top2.jpg">
-                <label>Size:</label>
-                <select name="size">
-                    <option>XS</option><option>S</option><option>M</option>
-                </select>
-                <button type="submit">Add to Cart</button>
-            </form>
-        </div>
+        <% } %>
     </div>
 
-    <!-- BOTTOMS -->
-    <h3>Bottoms</h3>
-    <div class="grid">
-        <div class="product">
-            <img src="images/kids-bottom1.jpg" alt="Blue Shorts">
-            <h4>Blue Shorts</h4>
-            <p>150</p>
-            <form action="AddToCartServlet" method="post">
-                <input type="hidden" name="productId" value="303">
-                <input type="hidden" name="name" value="Blue Shorts">
-                <input type="hidden" name="price" value="150">
-                <input type="hidden" name="image" value="images/kids-bottom1.jpg">
-                <label>Waist:</label>
-                <select name="size">
-                    <option>20</option><option>22</option><option>24</option><option>26</option>
-                </select>
-                <button type="submit">Add to Cart</button>
-            </form>
-        </div>
-
-        <div class="product">
-            <img src="images/kids-bottom2.jpg" alt="Cotton Trousers">
-            <h4>Cotton Trousers</h4>
-            <p>170</p>
-            <form action="AddToCartServlet" method="post">
-                <input type="hidden" name="productId" value="304">
-                <input type="hidden" name="name" value="Cotton Trousers">
-                <input type="hidden" name="price" value="170">
-                <input type="hidden" name="image" value="images/kids-bottom2.jpg">
-                <label>Waist:</label>
-                <select name="size">
-                    <option>20</option><option>22</option><option>24</option><option>26</option>
-                </select>
-                <button type="submit">Add to Cart</button>
-            </form>
-        </div>
-    </div>
 </section>
 
 <footer>

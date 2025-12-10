@@ -11,9 +11,10 @@ import javax.servlet.http.*;
 public class AddToCartServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/ecothrift";
+    // DB config - update password if needed
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/ecothrift?useSSL=false&serverTimezone=UTC";
     private static final String DB_USER = "root";
-    private static final String DB_PASS = ""; // update if needed
+    private static final String DB_PASS = ""; // <-- set your DB password
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -21,100 +22,153 @@ public class AddToCartServlet extends HttpServlet {
 
         request.setCharacterEncoding("UTF-8");
 
-        String name = request.getParameter("name");
-        String price = request.getParameter("price");
+        // Expect productId, size and optional qty from client
+        String productIdStr = request.getParameter("productId");
         String size = request.getParameter("size");
-        String image = request.getParameter("image");
-        String productId = request.getParameter("productId"); // optional; not used for DB insert
+        String qtyStr = request.getParameter("qty"); // optional
+        int qty = 1;
+        if (qtyStr != null && !qtyStr.isEmpty()) {
+            try { qty = Integer.parseInt(qtyStr); } catch (NumberFormatException ignored) { qty = 1; }
+            if (qty <= 0) qty = 1;
+        }
 
         HttpSession session = request.getSession(false);
         Integer userId = null;
 
-        // --- robustly obtain userId from session (handles Integer or String)
+        // robustly obtain userId from session (handles Integer or String)
         if (session != null) {
             Object uidObj = session.getAttribute("userId");
             if (uidObj instanceof Integer) {
                 userId = (Integer) uidObj;
             } else if (uidObj instanceof String) {
-                try {
-                    userId = Integer.parseInt((String) uidObj);
-                } catch (NumberFormatException ignored) {}
+                try { userId = Integer.parseInt((String) uidObj); } catch (NumberFormatException ignored) {}
             } else if (uidObj != null) {
-                // try toString parse
                 try { userId = Integer.parseInt(uidObj.toString()); } catch (Exception ignored) {}
             }
         }
 
-        // Log session info for debugging
+        // Debug
         System.out.println("[AddToCart] session userId raw = " + (session != null ? session.getAttribute("userId") : "no-session"));
         System.out.println("[AddToCart] resolved userId = " + userId);
-        System.out.println("[AddToCart] product: name=" + name + " price=" + price + " size=" + size + " image=" + image + " productId=" + productId);
+        System.out.println("[AddToCart] productId=" + productIdStr + " size=" + size + " qty=" + qty);
 
-        // sentinel for redirect
         String redirect = "cart.jsp";
 
-        if (userId != null) {
-            // Logged in -> save to DB (ecothrift.cart)
-            Connection con = null;
-            PreparedStatement pst = null;
-            try {
-                Class.forName("com.mysql.cj.jdbc.Driver");
-                con = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+        // Validate productId
+        if (productIdStr == null || productIdStr.trim().isEmpty()) {
+            response.sendRedirect("products?error=missingProduct");
+            return;
+        }
 
-                // <-- UPDATED: remove product_id (matches your table)
-                pst = con.prepareStatement(
-                    "INSERT INTO cart (user_id, name, price, size, image_url) VALUES (?, ?, ?, ?, ?)"
-                );
+        int productId;
+        try {
+            productId = Integer.parseInt(productIdStr);
+        } catch (NumberFormatException e) {
+            response.sendRedirect("products?error=invalidProduct");
+            return;
+        }
 
-                pst.setInt(1, userId);
+        // Fetch product info and check stock
+        String productName = null;
+        double productPrice = 0.0;
+        String imageUrl = null;
 
-                // name
-                pst.setString(2, name == null ? "" : name);
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+            response.sendRedirect("cart.jsp?addError=driver");
+            return;
+        }
 
-                // safe parse for price
-                double priceVal = 0.0;
-                try { if (price != null && !price.trim().isEmpty()) priceVal = Double.parseDouble(price); }
-                catch (NumberFormatException nfe) { priceVal = 0.0; }
-                pst.setDouble(3, priceVal);
+        try (Connection con = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
 
-                // size
-                pst.setString(4, size == null ? "" : size);
-
-                // image_url
-                pst.setString(5, image == null ? "" : image);
-
-                int rows = pst.executeUpdate();
-                System.out.println("[AddToCart] DB insert rows = " + rows);
-
-            } catch (SQLException sqe) {
-                // log SQL errors and redirect with error
-                sqe.printStackTrace();
-                redirect = "cart.jsp?addError=db";
-            } catch (ClassNotFoundException cnf) {
-                cnf.printStackTrace();
-                redirect = "cart.jsp?addError=driver";
-            } catch (Exception e) {
-                e.printStackTrace();
-                redirect = "cart.jsp?addError=other";
-            } finally {
-                try { if (pst != null) pst.close(); } catch (Exception ignored) {}
-                try { if (con != null) con.close(); } catch (Exception ignored) {}
+            // 1) product name & price
+            String sqlProd = "SELECT name, price FROM products WHERE id = ? AND active = 1";
+            try (PreparedStatement ps = con.prepareStatement(sqlProd)) {
+                ps.setInt(1, productId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        response.sendRedirect("products?error=productNotFound");
+                        return;
+                    }
+                    productName = rs.getString("name");
+                    productPrice = rs.getDouble("price");
+                }
             }
 
-        } else {
-            // Guest -> session cart
-            if (session == null) session = request.getSession(true);
-            List<Map<String, String>> cart = (List<Map<String, String>>) session.getAttribute("cart");
-            if (cart == null) cart = new ArrayList<>();
-            Map<String, String> item = new HashMap<>();
-            item.put("productId", productId == null ? "" : productId);
-            item.put("name", name == null ? "" : name);
-            item.put("price", price == null ? "0" : price);
-            item.put("size", size == null ? "" : size);
-            item.put("image", image == null ? "" : image);
-            cart.add(item);
-            session.setAttribute("cart", cart);
-            System.out.println("[AddToCart] Added to session cart, size now = " + cart.size());
+            // 2) primary image if present
+            String sqlImg = "SELECT image_url FROM product_images WHERE product_id = ? AND is_primary = 1 LIMIT 1";
+            try (PreparedStatement ps = con.prepareStatement(sqlImg)) {
+                ps.setInt(1, productId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) imageUrl = rs.getString("image_url");
+                }
+            }
+
+            // 3) check stock for selected size
+            String sqlSize = "SELECT quantity FROM product_sizes WHERE product_id = ? AND size = ? LIMIT 1";
+            int available = 0;
+            try (PreparedStatement ps = con.prepareStatement(sqlSize)) {
+                ps.setInt(1, productId);
+                ps.setString(2, size);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        available = rs.getInt("quantity");
+                    } else {
+                        // size not found
+                        response.sendRedirect("products?error=sizeNotFound");
+                        return;
+                    }
+                }
+            }
+
+            if (available < qty) {
+                // not enough stock
+                response.sendRedirect("products?error=outOfStock");
+                return;
+            }
+
+            // 4) Insert into DB cart if logged in; else add to session cart
+            if (userId != null) {
+                // Insert into cart table:
+                // columns: user_id, name, price, size, image_url, product_id, quantity
+                String sqlInsert = "INSERT INTO cart (user_id, name, price, size, image_url, product_id, quantity) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement ps = con.prepareStatement(sqlInsert)) {
+                    ps.setInt(1, userId);
+                    ps.setString(2, productName != null ? productName : "");
+                    ps.setDouble(3, productPrice);
+                    ps.setString(4, size != null ? size : "");
+                    ps.setString(5, imageUrl != null ? imageUrl : "");
+                    ps.setInt(6, productId);
+                    ps.setInt(7, qty);
+                    ps.executeUpdate();
+                }
+
+            } else {
+                // Guest -> session cart (store qty too)
+                if (session == null) session = request.getSession(true);
+                @SuppressWarnings("unchecked")
+                List<Map<String, String>> cart = (List<Map<String, String>>) session.getAttribute("cart");
+                if (cart == null) cart = new ArrayList<>();
+                Map<String, String> item = new HashMap<>();
+                item.put("productId", Integer.toString(productId));
+                item.put("name", productName != null ? productName : "");
+                item.put("price", Double.toString(productPrice));
+                item.put("size", size != null ? size : "");
+                item.put("image", imageUrl != null ? imageUrl : "");
+                item.put("qty", Integer.toString(qty));
+                cart.add(item);
+                session.setAttribute("cart", cart);
+                System.out.println("[AddToCart] Added to session cart, size now = " + cart.size());
+            }
+
+        } catch (SQLException sqe) {
+            sqe.printStackTrace();
+            redirect = "cart.jsp?addError=db";
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            redirect = "cart.jsp?addError=other";
         }
 
         response.sendRedirect(redirect);

@@ -28,7 +28,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Order Success | EcoThrift</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
     <style>
         /* Small local tweaks (won't conflict if you already define them) */
         .order-container { max-width: 980px; margin: 48px auto; padding: 28px; background:#fff; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.06); }
@@ -56,14 +56,14 @@
     <div class="order-container">
         <h1 class="order-heading">Order not found</h1>
         <p class="order-meta">No valid order id was provided.</p>
-        <a class="btn-primary" href="products.jsp">Continue Shopping</a>
+        <a class="btn-primary" href="${pageContext.request.contextPath}/products">Continue Shopping</a>
     </div>
 <%
         return;
     }
 
     // DB config
-    final String DB_URL = "jdbc:mysql://localhost:3306/ecothrift";
+    final String DB_URL = "jdbc:mysql://localhost:3306/ecothrift?useSSL=false&serverTimezone=UTC";
     final String DB_USER = "root";
     final String DB_PASS = ""; // change if needed
 
@@ -94,7 +94,7 @@
     <div class="order-container">
         <h1 class="order-heading">Order not found</h1>
         <p class="order-meta">We couldn't find order #<%= esc(orderId) %>.</p>
-        <a class="btn-primary" href="products.jsp">Continue Shopping</a>
+        <a class="btn-primary" href="${pageContext.request.contextPath}/products">Continue Shopping</a>
     </div>
 <%
             return;
@@ -125,7 +125,7 @@
     <div class="order-container">
         <h1 class="order-heading">Something went wrong</h1>
         <p class="order-meta">There was an error loading your order details. Please contact support if this persists.</p>
-        <a class="btn-primary" href="products.jsp">Continue Shopping</a>
+        <a class="btn-primary" href="${pageContext.request.contextPath}/products">Continue Shopping</a>
     </div>
 <%
         return;
@@ -213,7 +213,7 @@
             <p class="order-note">You did not add a donation to this order. You can add donations anytime from the Donate page.</p>
         <% } %>
 
-        <a class="btn-primary" href="products.jsp">Continue Shopping</a>
+        <a class="btn-primary" href="${pageContext.request.contextPath}/products">Continue Shopping</a>
     </div>
 </div>
 

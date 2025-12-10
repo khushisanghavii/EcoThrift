@@ -52,8 +52,10 @@
     <% 
         } else { 
     %>
-            <a href="orders.jsp" class="btn">My Orders</a>   <!-- ? NEW LINK ADDED -->
+            <a href="orders.jsp">My Orders</a>   <!-- ? NEW LINK ADDED -->
             <span style="margin-left:10px; font-weight:bold;">Hi, <%= user %></span>
+            <a href="DonationListServlet">My Donations</a>
+
             <a href="LogoutServlet" class="btn">Logout</a>
     <% 
         } 

@@ -148,27 +148,28 @@
     <header>
     <div class="logo">EcoThrift</div>
     <nav>
-        <a href="index.jsp">Home</a>
-        <a href="products.jsp">Shop</a>
-        <a href="donate.jsp">Donate</a>
-        <a href="about.jsp">About</a>
-        <a href="cart.jsp">Cart</a>
+  <a href="${pageContext.request.contextPath}/index.jsp">Home</a>
+  <a href="${pageContext.request.contextPath}/products">Shop</a>
+  <a href="${pageContext.request.contextPath}/donate.jsp">Donate</a>
+  <a href="${pageContext.request.contextPath}/about.jsp">About</a>
+  <a href="${pageContext.request.contextPath}/cart.jsp">Cart</a>
 
-        <% 
-            String user = (String) session.getAttribute("username"); 
-            if (user == null) { 
-        %>
-                <a href="login.jsp" class="btn">Login</a>
-                <a href="register.jsp" class="btn">Register</a>
-        <% 
-            } else { 
-        %>
-                <span style="margin-left:10px; font-weight:bold;">Hi, <%= user %></span>
-                <a href="LogoutServlet" class="btn">Logout</a>
-        <% 
-            } 
-        %>
-    </nav>
+  <%
+    HttpSession __s = request.getSession(false);
+    String user = (__s == null) ? null : (String) __s.getAttribute("username");
+  %>
+
+  <% if (user == null) { %>
+      <a href="${pageContext.request.contextPath}/login.jsp" class="btn">Login</a>
+      <a href="${pageContext.request.contextPath}/register.jsp" class="btn">Register</a>
+  <% } else { %>
+      <a href="${pageContext.request.contextPath}/orders.jsp">My Orders</a>
+      <a href="${pageContext.request.contextPath}/DonationListServlet">My Donations</a>
+      <span style="margin-left:10px; font-weight:bold;">Hi, <%= user %></span>
+      <a href="${pageContext.request.contextPath}/LogoutServlet" class="btn">Logout</a>
+  <% } %>
+</nav>
+
 </header>
 
 

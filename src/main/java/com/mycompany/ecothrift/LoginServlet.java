@@ -2,13 +2,16 @@ package com.mycompany.ecothrift;
 
 import java.io.IOException;
 import java.sql.*;
-import java.util.*;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.*;
 
 @WebServlet("/LoginServlet")
 public class LoginServlet extends HttpServlet {
+
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/ecothrift?useSSL=false&serverTimezone=UTC";
+    private static final String DB_USER = "root";
+    private static final String DB_PASS = "";
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -17,66 +20,54 @@ public class LoginServlet extends HttpServlet {
         String email = request.getParameter("email");
         String password = request.getParameter("password");
 
-        Connection con = null;
-
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            con = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/ecothrift",
-                "root",
-                ""
-            );
+        } catch (ClassNotFoundException ce) {
+            throw new ServletException("JDBC driver not found", ce);
+        }
 
-            String sql = "SELECT * FROM users WHERE email=? AND password=?";
-            PreparedStatement ps = con.prepareStatement(sql);
+        String sql = "SELECT id, name, role FROM users WHERE email=? AND password=?";
+
+        try (Connection con = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setString(1, email);
             ps.setString(2, password);
 
-            ResultSet rs = ps.executeQuery();
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    int userId = rs.getInt("id");
+                    String username = rs.getString("name");
+                    String role = rs.getString("role");
+                    if (role == null || role.trim().isEmpty()) role = "USER";
 
-            if (rs.next()) {
+                    // create session (or use existing) and store attributes
+                    HttpSession session = request.getSession(true);
+                    session.setAttribute("username", username);
+                    session.setAttribute("userId", userId);
+                    session.setAttribute("role", role);
+                    // optional: session timeout (seconds)
+                    // session.setMaxInactiveInterval(30 * 60);
 
-                int userId = rs.getInt("id");
-                String username = rs.getString("name");
+                    System.out.println("[LOGIN] Logged in as: " + username + " | ROLE = " + role);
 
-                HttpSession session = request.getSession();
-                session.setAttribute("username", username);
-                session.setAttribute("userId", userId);
-
-                // ⭐ STEP 2: MERGE SESSION CART INTO DATABASE
-                List<Map<String, String>> guestCart =
-                    (List<Map<String, String>>) session.getAttribute("cart");
-
-                if (guestCart != null && !guestCart.isEmpty()) {
-
-                    for (Map<String, String> item : guestCart) {
-                        PreparedStatement pst = con.prepareStatement(
-                            "INSERT INTO cart (user_id, name, price, size) VALUES (?, ?, ?, ?)"
-                        );
-
-                        pst.setInt(1, userId);
-                        pst.setString(2, item.get("name"));
-                        pst.setDouble(3, Double.parseDouble(item.get("price")));
-                        pst.setString(4, item.get("size"));
-                        pst.executeUpdate();
+                    // redirect using context path so relative URLs still work correctly
+                    if ("ADMIN".equalsIgnoreCase(role)) {
+                        response.sendRedirect(request.getContextPath() + "/admin/products");
+                    } else {
+                        response.sendRedirect(request.getContextPath() + "/index.jsp");
                     }
-
-                    // Clear guest cart after merging
-                    session.removeAttribute("cart");
+                    return;
+                } else {
+                    request.setAttribute("error", "Invalid email or password!");
+                    request.getRequestDispatcher("login.jsp").forward(request, response);
+                    return;
                 }
-
-                response.sendRedirect("index.jsp");
-
-            } 
-            else {
-                request.setAttribute("error", "Invalid email or password!");
-                request.getRequestDispatcher("login.jsp").forward(request, response);
             }
 
-
-        } catch (Exception e) {
+        } catch (SQLException e) {
             e.printStackTrace();
-            response.getWriter().println("Login Failed: " + e.getMessage());
+            throw new ServletException("Database error during login", e);
         }
     }
 }

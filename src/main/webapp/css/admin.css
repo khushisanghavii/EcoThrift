@@ -1,0 +1,32 @@
+/* admin.css — load AFTER style.css */
+
+/* admin layout */
+.admin-wrap { display:flex; min-height:100vh; gap:20px; background:#f7f9f8; }
+.sidebar {
+  width:240px; background:#fff; border-right:1px solid #eef6ee;
+  box-shadow:0 2px 8px rgba(0,0,0,0.03); padding:18px; box-sizing:border-box;
+}
+.brand { font-size:20px; font-weight:800; color:#2f8f3f; margin-bottom:12px; }
+.nav-item { display:block; padding:10px 12px; color:#2f8f3f; text-decoration:none; border-radius:8px; margin-bottom:6px; font-weight:600; }
+.nav-item:hover { background:#f0fff3; }
+.nav-item.active { background:#2f8f3f; color:#fff !important; }
+
+/* main area */
+.main { flex:1; padding:28px; box-sizing:border-box; }
+.panel { background:#fff; padding:18px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.06); }
+
+/* buttons */
+.btn { background:#2f8f3f; color:#fff; padding:8px 10px; border-radius:8px; text-decoration:none; display:inline-block; }
+.btn.ghost { background:transparent; border:1px solid #dfeee0; color:#2f8f3f; }
+.btn.danger { background:#d9534f; color:#fff; }
+
+/* utilities */
+.kpis { display:flex; gap:12px; align-items:center; margin-bottom:12px; }
+.kpi { background:#fff; padding:12px 16px; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.04); min-width:100px; text-align:center; }
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:12px}
+.prod{background:#fff;border:1px solid #eee;padding:12px;border-radius:8px;display:flex;gap:12px;align-items:flex-start}
+.prod img{width:80px;height:80px;object-fit:cover;border-radius:8px}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.row input{padding:8px;border-radius:8px;border:1px solid #ddd}
+.small{color:#666;font-size:13px}
+@media (max-width:900px){ .admin-wrap{flex-direction:column} .sidebar{width:100%;display:flex;overflow:auto} .main{padding:16px} .products-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))} }

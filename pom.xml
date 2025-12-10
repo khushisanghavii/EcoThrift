@@ -12,15 +12,15 @@
     <name>EcoThrift</name>
 
     <properties>
-        <maven.compiler.source>22</maven.compiler.source>
-        <maven.compiler.target>22</maven.compiler.target>
+        <!-- JDK target -->
+        <maven.compiler.release>22</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- final WAR name -->
+        <project.finalName>Ecothrift</project.finalName>
     </properties>
 
-    <!-- ✅ Dependencies -->
     <dependencies>
-
-        <!-- ✅ Java EE 8 API (Tomcat 9 uses javax.*) -->
+        <!-- Java EE 8 API (provided by the container - Tomcat 9 uses javax.*) -->
         <dependency>
             <groupId>javax</groupId>
             <artifactId>javaee-api</artifactId>
@@ -28,48 +28,47 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- ✅ MySQL Connector -->
+        <!-- MySQL Connector -->
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>8.0.33</version>
         </dependency>
 
-        <!-- ✅ JSTL Support (for JSP) -->
+        <!-- JSTL for JSP (recommended for Tomcat 9 / Java EE 8) -->
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>jstl</artifactId>
             <version>1.2</version>
         </dependency>
-
     </dependencies>
 
-    <!-- ✅ Build Plugins -->
     <build>
-        <finalName>Ecothrift</finalName>
+        <finalName>${project.finalName}</finalName>
         <plugins>
-
-            <!-- Java Compiler -->
+            <!-- Compiler plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
+                    <!-- Using release ensures cross-targeting -->
                     <release>22</release>
                 </configuration>
             </plugin>
 
-            <!-- ✅ WAR Plugin (modern version for JDK 22) -->
+            <!-- WAR plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
                 <version>3.3.2</version>
                 <configuration>
                     <failOnMissingWebXml>false</failOnMissingWebXml>
+                    <!-- include compiled classes and webapp as usual -->
                 </configuration>
             </plugin>
 
+            <!-- Optional: add resources plugin default behavior; not required to change -->
         </plugins>
     </build>
-
 </project>
